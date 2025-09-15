@@ -22,9 +22,19 @@ def load_css(path: str) -> None:
         st.warning("styles.css not found — using inline defaults.")
 
 def get_token() -> str:
-    token = os.environ.get("GITHUB_TOKEN")
-    if token is None:
-        st.sidebar.error("GITHUB_TOKEN not set. In PowerShell run: $env:GITHUB_TOKEN='your_token' then restart Streamlit.")
+    # 1) check Streamlit secrets (works on Streamlit Cloud or local .streamlit/secrets.toml)
+    token = None
+    try:
+        token = st.secrets.get("GITHUB_TOKEN")
+    except Exception:
+        token = None
+
+    # 2) fallback to environment variable for local PowerShell usage
+    if not token:
+        token = os.environ.get("GITHUB_TOKEN")
+
+    if not token:
+        st.sidebar.error("GITHUB_TOKEN not set. Add it to .streamlit/secrets.toml or set $env:GITHUB_TOKEN in PowerShell, then restart.")
         st.stop()
     return token
 
