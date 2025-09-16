@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 from azure.ai.inference import ChatCompletionsClient
-from azure.ai.inference.models import SystemMessage, UserMessage
+from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessage
 from azure.core.credentials import AzureKeyCredential
 import html
 
@@ -66,11 +66,24 @@ def render_messages(container):
 
 def call_model(token: str, model: str, user_input: str, temperature: float) -> str:
     client = ChatCompletionsClient(endpoint=ENDPOINT, credential=AzureKeyCredential(token))
+
+    # Build the conversation history: start with the system prompt, then include all saved messages.
+    messages = [SystemMessage("You are a helpful assistant.")]
+    for m in st.session_state.get("messages", []):
+        role = m.get("role", "assistant")
+        content = m.get("content", "")
+        if role == "user":
+            messages.append(UserMessage(content))
+        else:
+            messages.append(AssistantMessage(content))
+
+    # The session already appends the current user message before calling call_model,
+    # so messages includes the latest user_input. If you call call_model before appending,
+    # you can uncomment the next line to ensure the latest input is included:
+    # messages.append(UserMessage(user_input))
+
     response = client.complete(
-        messages=[
-            SystemMessage("You are a helpful assistant."),
-            UserMessage(user_input),
-        ],
+        messages=messages,
         temperature=float(temperature),
         top_p=1.0,
         model=model,
